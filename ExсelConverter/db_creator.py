@@ -1,14 +1,11 @@
 import os, sqlite3
-from ExсelConverter.table_descriptor import SQLiteTableDescriptor
+from ExсelConverter.table_descriptor import SQLTableDescriptor
 from ExсelConverter.exel_parser import XLSXParser
+from ExсelConverter.sql_enums import TypeEnum as TE
+from ExсelConverter.SQLMaping import SQLiteMapClass, MySQLMapClass
 
 
 class DBCreator:
-    def __init__(self):
-        pass
-
-
-class SQLiteCreator(DBCreator):
     def __init__(self, file_path):
         super().__init__()
         self.parser = XLSXParser(file_path)
@@ -16,7 +13,7 @@ class SQLiteCreator(DBCreator):
         self.sheets = exel_dis['sheets']
         self.tables = {}
         for i, sheet in enumerate(self.sheets):  # создаем таблички
-            self.tables[i] = SQLiteTableDescriptor(i, sheet, exel_dis['col'][sheet])
+            self.tables[i] = SQLTableDescriptor(i, sheet, exel_dis['col'][sheet])
 
     def change_atr_index(self, table_index: int, old_index: int, new_index: int):
         if table_index in self.tables.keys():
@@ -26,9 +23,9 @@ class SQLiteCreator(DBCreator):
         if table_index in self.tables.keys():
             self.tables[table_index].change_atr_name(atr_index, name)
 
-    def change_atr_type(self,  table_index: int, atr_index: int, atr_type: str):
+    def change_atr_type(self,  table_index: int, atr_index: int, atr_type: str, varchar_num: int):
         if table_index in self.tables.keys():
-            self.tables[table_index].change_atr_type(atr_index, atr_type)
+            self.tables[table_index].change_atr_type(atr_index, atr_type, varchar_num)
 
     def change_atr_constraint(self, table_index: int, atr_index: int, constraint: str):
         if table_index in self.tables.keys():
@@ -42,7 +39,7 @@ class SQLiteCreator(DBCreator):
         if table_index in self.tables.keys():
             self.tables[table_index].delete_atr(atr_index)
 
-    def get_insert_command(self, table: SQLiteTableDescriptor, row)->str:
+    def get_insert_command(self, table: SQLTableDescriptor, row)->str:
         attributes_names = ''
         values = ''
         for key in table.attributes.keys():
@@ -50,7 +47,7 @@ class SQLiteCreator(DBCreator):
             if key < 0 or key >= len(row):
                 return ''
 
-            if table[key].atr_type == 'INTEGER' or table[key].atr_type == 'REAL':
+            if table[key].atr_type == TE.int or table[key].atr_type == TE.real:
                 values += row[key] + ', '
             else:
                 values += '\'' + row[key] + '\', '
@@ -60,13 +57,14 @@ class SQLiteCreator(DBCreator):
 
         return command
 
-    def create_db(self, path: str, file_name)->[]:
-        file_path = os.path.join(path, file_name + '.db')
+
+    def create_SQLite_db(self, path: str, file_name:str)->[]:
+        file_path = os.path.join(path, file_name + SQLiteMapClass.get_extension())
         conn = sqlite3.connect(file_path)
         cursor = conn.cursor()
         errors = []
         for key in self.tables.keys():
-            command = self.tables[key].generate_command()
+            command = self.tables[key].generate_command(SQLiteMapClass)
             try:
                 cursor.execute(command)
             except Exception:
@@ -87,11 +85,26 @@ class SQLiteCreator(DBCreator):
         conn.close()
         return errors
 
-    def create_txt(self, path: str, file_name):
+    def create_SQLite_txt(self, path: str, file_name):
         file_path = os.path.join(path, file_name + '.txt')
         command = 'Скрипты сгенерированы с помощью ExcelConverter \n'
         for key in self.tables.keys():
-            command += self.tables[key].generate_command() + '\n'
+            command += self.tables[key].generate_command(SQLiteMapClass) + '\n'
+
+            data = self.parser.get_data_by_sheet_name(self.sheets[key])
+            for i, row in enumerate(data):
+                command += self.get_insert_command(self.tables[key], row) + '\n'
+
+            command += '\n\n'
+
+        with open(file_path, "tw", encoding='utf-8') as file:
+            file.write(command)
+
+    def create_MySQL_txt(self, path: str, file_name):
+        file_path = os.path.join(path, file_name + '.txt')
+        command = 'Скрипты сгенерированы с помощью ExcelConverter \n'
+        for key in self.tables.keys():
+            command += self.tables[key].generate_command(MySQLMapClass) + '\n'
 
             data = self.parser.get_data_by_sheet_name(self.sheets[key])
             for i, row in enumerate(data):

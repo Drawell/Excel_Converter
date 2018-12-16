@@ -27,57 +27,68 @@
         </td>
         <td>
         <form method="post" action="" id ="form_type{{atr.index}}">
-            {% set int = "" %}
-            {% set real = "" %}
-            {% set text = "" %}
-            {% if atr.atr_type == "INTEGER" %}
-                {% set int = "checked" %}
-            {% elif atr.atr_type == "REAL" %}
-                {% set real = "checked" %}
-            {% elif atr.atr_type == "TEXT" %}
-                {% set text = "checked" %}
-            {% endif %}
-            <input type="radio" name="type{{loop.index0}}" value="INTEGER" {{int}} onchange="ChangeType({{key}}, this.value)"> int <br>
-            <input type="radio" name="type{{loop.index0}}" value="REAL" {{real}} onchange="ChangeType({{key}}, this.value)"> real <br>
-            <input type="radio" name="type{{loop.index0}}" value="TEXT" {{text}} onchange="ChangeType({{key}}, this.value)"> text <br>
+
+             {% for t in all_types_list %}
+                {% if t == atr.atr_type %}
+                <input checked type="radio" value="{{t.value}}" onchange="ChangeType({{key}}, this.value)"> {{t.value}}
+                {% else %}
+                <input type="radio" value="{{t.value}}" onchange="ChangeType({{key}}, this.value)"> {{t.value}}
+                {% endif %}
+
+                {% if t.value == "VARCHAR" %}
+                <input type="text" id="varchar_{{key}}" value="{{atr.char_count}}" onchange="ChangeType({{key}}, '{{t.value}}')">
+                {% endif %}
+                <br>
+            {% endfor %}
+
         </form>
         </td>
         <!--Ограничения-->
         <td>
         <form method="post" action="" id ="form_cons{{atr.index}}">
-            {% set pk = "" %}   {% set un = "" %}
-            {% set ai = "" %}   {% set nn = "" %}
-
-            {% if "PRIMARY KEY" in atr.constraints %}
-                {% set pk = "checked" %}
-            {% endif %}
-
-            {% if "UNIQUE" in atr.constraints %}
-                {% set un = "checked" %}
-            {% endif %}
-
-            {% if "AUTOINCREMENT" in atr.constraints %}
-                {% set ai = "checked" %}
-            {% endif %}
-
-            {% if "NOT NULL" in atr.constraints %}
-                {% set nn = "checked" %}
-            {% endif %}
-
-            <input type="checkbox" name="primary key{{loop.index0}}" value="PRIMARY KEY" {{pk}} onchange="ChangeConstraint({{key}}, this.value)"> primary key <br>
-            <input type="checkbox" name="unique{{loop.index0}}" value="UNIQUE" {{un}} onchange="ChangeConstraint({{key}}, this.value)"> unique <br>
-            <input type="checkbox" name="AUTOINCREMENT{{loop.index0}}" value="AUTOINCREMENT" {{ai}} onchange="ChangeConstraint({{key}}, this.value)"> auto increment <br>
-            <input type="checkbox" name="not null{{loop.index0}}" value="NOT NULL" {{nn}} onchange="ChangeConstraint({{key}}, this.value)"> not null <br>
-
+            {% for con in all_constraints_list %}
+                {% if con in atr.constraints %}
+                <input type="checkbox" value="{{con.value}}" checked onchange="ChangeConstraint({{key}}, this.value)"> {{con.value}}
+                {% else %}
+                <input type="checkbox" value="{{con.value}}" onchange="ChangeConstraint({{key}}, this.value)"> {{con.value}}
+                {% endif %}
+            <br>
+            {% endfor %}
          </form>
         </td>
+        <!--FOREIGN KEY-->
         <td>
             <form method="post" action="" id ="form_fk{{atr.index}}">
-            <div class="label">Имя таблицы</div>
-            <input type="text" value="{{atr.fk_table}}" onchange="ChangeFKTable({{key}}, this.value)"> <br>
-           <div class="label">Имя атрибута</div>
-            <input type="text" value="{{atr.fk_atr}}" onchange="ChangeFKAtr({{key}}, this.value)">
-        </form>
+                {% set disabled = "disabled" %}
+                {% set checked = "" %}
+                {% if CE.foreign_key in atr.constraints %}
+                    {% set disabled = "" %}
+                    {% set checked = "checked" %}
+                {% endif %}
+                <input type="checkbox" value="FOREIGN KEY" {{checked}} onchange="ChangeConstraint({{key}}, this.value)"> FOREIGN KEY <br>
+                <!--<div class="label">Имя таблицы</div>
+                <input {{disabled}} type="text" value="{{atr.fk_table}}" onchange="ChangeFKTable({{key}}, this.value)"> <br>
+                <div class="label">Имя атрибута</div>
+                <input {{disabled}} type="text" value="{{atr.fk_atr}}" onchange="ChangeFKAtr({{key}}, this.value)">
+                -->
+
+                <select id="fk_table_{{key}}" {{disabled}} name="{{disabled}}"
+                        onchange="ChangeFKTable({{key}}, this.value, '{{disabled}}')">
+
+                    {% for key in table_dict.keys() %}
+                    {% if atr.fk_table == table_dict[key].name %}
+                    <option selected value="{{table_dict[key].index}}" name="{{disabled}}">{{table_dict[key].name}}</option>
+
+                    {% else %}
+                    <option  value="{{table_dict[key].index}}">{{table_dict[key].name}}</option>
+                    {% endif %}
+                    {% endfor %}
+                    <option value=""></option>
+                </select>
+                <div id="fk_atr_div_{{key}}"></div>
+
+
+            </form>
         </td>
     </tr>
     {% endfor %}
@@ -91,39 +102,46 @@ function ChangeName(atr_index, value) {
     $.post( url, {index: atr_index, val: value} ).done(function( data ) {
         $( "#result" ).empty().append( data );
     });
+    Load_selector();
+
 }
 
 function ChangeIndex(atr_index, value) {
     url = 'http://127.0.0.1:5000/change_index/';
     $.post( url, {index: atr_index, val: value} ).done(function( data ) {
         $( "#result" ).empty().append( data );
+        Load_selector();
     });
+
 }
+
 function ChangeType(atr_index, value) {
     url = 'http://127.0.0.1:5000/change_type/';
-    $.post( url, {index: atr_index, val: value} ).done(function( data ) {
+    varchar_n = document.getElementById("varchar_" + atr_index).value;
+    $.post( url, {index: atr_index, val: value, varchar: varchar_n} ).done(function( data ) {
         $( "#result" ).empty().append( data );
+        Load_selector();
     });
+
 }
 
 function ChangeConstraint(atr_index, value) {
     url = 'http://127.0.0.1:5000/change_constraint/';
     $.post( url, {index: atr_index, val: value} ).done(function( data ) {
         $( "#result" ).empty().append( data );
+        Load_selector();
     });
+
 }
 
-function ChangeFKTable(atr_index, value) {
+function ChangeFKTable(atr_index, idx, dis) {
     url = 'http://127.0.0.1:5000/change_fk_table/';
-    $.post( url, {index: atr_index, val: value} ).done(function( data ) {
-        $( "#result" ).empty().append( data );
+    $.post( url, {index: atr_index, table_index: idx, dis: dis} ).done(function( data ) {
+        $( document.getElementById("fk_atr_div_"+ atr_index)).empty().append( data );
     });
+}
+function aa(){
+    alert("asd");
 }
 
-function ChangeFKAtr(atr_index, value) {
-    url = 'http://127.0.0.1:5000/change_fk_atr/';
-    $.post( url, {index: atr_index, val: value} ).done(function( data ) {
-        $( "#result" ).empty().append( data );
-    });
-}
 </script>

@@ -49,15 +49,14 @@
 <table><tr><td>
 
 <form method="post" action="/create_SQLite/">
-    <!--<input type="submit" name = "button" value = "создать SQLite">-->
-    <input type = "button" onclick="CreateSQLite('{{filename}}')" name = "sqllite" value = "создать SQLite">
-    <input type = "button" onclick="CreateSQLite_TXT('{{filename}}')" name = "txt" value = "создать TXT">
-    <input type="text" name="value" value="{{filename}}">
+    <input type="text" name="value" id="filename" value="{{filename}}"> <br>
+    <input type = "button" onclick="CreateSQLite('{{filename}}')" name = "sqllite" value = "создать SQLite"> <br>
+    <input type = "button" onclick="CreateSQLite_TXT('{{filename}}')" name = "txt" value = "создать SQLite TXT"><br>
+    <input type = "button" onclick="CreateMySQL_TXT('{{filename}}')" name = "txt" value = "создать MySQL TXT">
+
 </form>
 
 <form action="">
-     <!--<button type="submit" value="создать SQLite" onclick="CreateSQLite()">создать SQLite </button>
-    <!--<input type="submit" name="создать MySQL" value="add col" onchange="CreateMySQL">-->
 
     <p><strong>Выберите Таблицу</strong></p>
     <p><select id ="{{filename}}" onchange="ChangeTable(this.value)">
@@ -80,41 +79,70 @@
     <div id ="errors"></div>
 
 </td></tr>
+
 </table>
-<iframe id="my_iframe" style="display:none;"></iframe>
+
 <script>
+
 
 function ChangeTable(value) {
     url = 'http://127.0.0.1:5000/show_table/';
     $.post( url, {index: value} ).done(function( data ) {
         $( "#result" ).empty().append( data );
+        Load_selector();
     });
+
 }
+
+function Load_selector() {
+    var counter = 0;
+    for (var key = 0; key < 20; key++){
+        var el = document.getElementById("fk_table_" + key);
+        if (el != null){
+            ChangeFKTable(key, el.value, el.name);
+        }
+    }
+}
+
 
 function CreateSQLite(val) {
     url = 'http://127.0.0.1:5000/create_SQLite/';
-    $.post( url, {value: val} ).done(function( data ) {
-        uri= 'http://127.0.0.1:5000/' + data;
+    filename = document.getElementById("filename").value;
+    $.post( url, {value: filename} ).done(function( data ) {
+        uri = 'http://127.0.0.1:5000/download/' + filename + '.db';
         var link = document.createElement("a");
         link.download = name;
         link.href = uri;
         link.click();
+        $( "#errors" ).empty().append( data );
     });
 }
 
 function CreateSQLite_TXT(val) {
     url = 'http://127.0.0.1:5000/create_SQLite_TXT/';
-    $.post( url, {value: val} ).done(function( data ) {
-        uri= 'http://127.0.0.1:5000/' + data;
+    filename = document.getElementById("filename").value;
+    $.post( url, {value: filename} ).done(function( data ) {
+        uri = 'http://127.0.0.1:5000/download/' + filename + '.txt';
         var link = document.createElement("a");
         link.download = name;
         link.href = uri;
         link.click();
+        $( "#errors" ).empty().append( data );
     });
-
-
 }
 
+function CreateMySQL_TXT(val) {
+    url = 'http://127.0.0.1:5000/create_MySQL_TXT/';
+    filename = document.getElementById("filename").value;
+    $.post( url, {value: filename} ).done(function( data ) {
+        uri = 'http://127.0.0.1:5000/download/' + filename + '.txt';
+        var link = document.createElement("a");
+        link.download = name;
+        link.href = uri;
+        link.click();
+        $( "#errors" ).empty().append( data );
+    });
+}
 
 </script>
 </body>
